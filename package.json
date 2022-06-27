@@ -1,6 +1,6 @@
 {
-  "name": "aua-class-picker",
-  "version": "1.1.1",
+  "name": "saua-class-picker",
+  "version": "1.1.2",
   "description": "CLI app that automates picking your preferred classes when the website is under pressure",
   "main": "app.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/smkoyan/aua-class-picker"
+    "url": "https://github.com/SamTop/saua-class-picker"
   },
   "bin": "app.js",
   "author": "Sargis Mkoyan",
