@@ -6,7 +6,7 @@ const { createSpinner } = require("nanospinner");
 const inquirer = require('inquirer');
 const fuzzy = require('fuzzy');
 const User = require('./user');
-
+const fs = require('fs');
 
 // TODO: move to some config function or init function dedicated to inquirer or just wrap inquirer in a module
 inquirer.registerPrompt('checkbox-plus', require('inquirer-checkbox-plus-prompt'));
@@ -68,7 +68,7 @@ const login = async (username, password) => {
         };
     }
 
-    loginSpinner.success({text: `Successfully Logged In`});
+    loginSpinner.success({text: `Successfully Logged In as ${username}`});
 
     return {
         success: true,
@@ -82,7 +82,7 @@ const login = async (username, password) => {
  * @param classes {Array<{id: int, name: string}>}
  * @returns {Promise<Array<int>>}
  */
-const pickClasses = async (classes) => {
+const pickClasses = async (classes=null) => {
     const questions = [
         // {
         //     type: 'list',
@@ -151,7 +151,7 @@ const pickClasses = async (classes) => {
     /** @type {{classInputType: string, classes: Array<int>}} */
     const answers = await inquirer.prompt(questions);
     if (answers.classInputType === 'ids' || answers.classIds) {
-        return new Promise((resolve) => resolve(answers.classIds.split(' ')))
+        return new Promise((resolve) => resolve(answers.classIds.trim().split(' ')))
     }
     return answers.classes;
 
@@ -215,10 +215,50 @@ const parseCommandLineArguments = () => {
 const parseCredentials = () => {
     const cmdArgs = parseCommandLineArguments()
 
-    console.log(cmdArgs);
+    // console.log(cmdArgs);
 
     return cmdArgs;
 };
+
+
+async function tryRegisterClassIfAvailable(user, classId) {
+    const result = await user.checkAvailability(classId);
+    if (result.success) {
+        if (result.capacity > result.registeredNumber) {
+            return await user.register(classId);
+        }
+        return {
+            success: false,
+            message: `Class with id ${classId} is full`,
+            capacity: result.capacity,
+            registered: result.registeredNumber,
+            classId,
+        };
+    }
+    return result;
+}
+
+const tryRegisterIfAvailable = (user, classes) => {
+    classes.forEach(classId => {
+        const id = setInterval(async () => {
+            const result = await tryRegisterClassIfAvailable(user, classId);
+            if(result.success) {
+                const date = new Date();
+                const logData = `${date.getFullYear()}.${date.getMonth()}.${date.getDate()} ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()} - Registered for class with id ${classId}`;
+                console.log(logData);
+                fs.appendFileSync('successfulRegistrations.log', logData+'\n');
+                clearInterval(id);
+            } else {
+                let message = `Capacity: ${result.capacity} Registered: ${result.registered} `;
+                message += result.message + (result.auaMessage ? " " + result.auaMessage : "");
+                const date = new Date();
+                const dateStr = `${date.getFullYear()}.${date.getMonth()}.${date.getDate()} ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+                fs.appendFileSync('unsuccessfulRegistrations.log', dateStr+' - '+message+'\n');
+                console.log(message);
+            }
+        }, 500);
+    });
+}
 
 
 const run = async () => {
@@ -232,30 +272,35 @@ const run = async () => {
         return;
     }
 
-    const fetchClassesResult = await user.fetchClasses();
+    ///////////////////////////////////////////////////////////////////////////
+    const preferredClasses = await pickClasses();
+    console.log(preferredClasses);
+    await tryRegisterIfAvailable(user, preferredClasses);
+    ///////////////////////////////////////////////////////////////////////////
 
-    if (! fetchClassesResult.success) {
-        // cannot fetch classes maybe exit program or let enter raw ids
-        // will handle later
-        return;
-    }
-    const availableClasses = fetchClassesResult.data;
-
-    const preferredClasses = await pickClasses(availableClasses);
-
-
-    // TODO: ask if wanna start registering now and start registration else hang there
-    /// ---------------------------------------------------------
-
-    await Promise.all(preferredClasses.map(async cls => {
-        // while(!tryRegister(user, cls)) {
-        //     await sleep(500);
-        // }
-        while( !(await Promise.all([tryRegister(user, cls), tryRegister(user, cls), tryRegister(user, cls)])).includes(true)) {
-            await sleep(5000);
-        }
-    }));
-    console.log('Congratulations')
+    ///////////////////////////////////////////////////////////////////////////
+    // const fetchClassesResult = await user.fetchClasses();
+    //
+    // if (! fetchClassesResult.success) {
+    //     // cannot fetch classes maybe exit program or let enter raw ids
+    //     // will handle later
+    //     return;
+    // }
+    // const availableClasses = fetchClassesResult.data;
+    //
+    // const preferredClasses = await pickClasses(availableClasses);
+    //
+    //
+    // // TODO: ask if wanna start registering now and start registration else hang there
+    // /// ---------------------------------------------------------
+    //
+    // await Promise.all(preferredClasses.map(async cls => {
+    //     while( !(await Promise.all([tryRegister(user, cls), tryRegister(user, cls), tryRegister(user, cls)])).includes(true)) {
+    //         await sleep(200);
+    //     }
+    // }));
+    // console.log('Congratulations')
+    /////////////////////////////////////////////////////////////////////////////
 };
 
 void run()

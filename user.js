@@ -111,6 +111,45 @@ class User {
         }
     }
 
+    async checkAvailability(classId) {
+        try {
+            const response = await this._axios.post(endpoints.classDetails, {
+                courseClassID: classId,
+            });
+
+            const { data } = response;
+
+            if (data.HasError || data.HasWarning) {
+                return {
+                    success: false,
+                    auaMessage: data.Message,
+                    message: `Seems like '${classId}' is invalid class id`,
+                    classId,
+                };
+            }
+
+            const dom = new JSDOM(data);
+            const capacitySelector = '#wndClassDetails > div.t-window-content.t-content > div > div > div:nth-child(5) > div:nth-child(2) > div';
+            const capacity = dom.window.document.querySelector(capacitySelector).textContent;
+            const registeredNumberSelector = '#wndClassDetails > div.t-window-content.t-content > div > div > div:nth-child(7) > div:nth-child(1) > div';
+            const registeredNumber = dom.window.document.querySelector(registeredNumberSelector).textContent;
+
+            return {
+                success: true,
+                capacity,
+                registeredNumber,
+                classId,
+            };
+        } catch (e) {
+            console.log(e);
+            return {
+                success: false,
+                message: 'Something went wrong, try again later',
+                classId,
+            };
+        }
+    }
+
     async fetchClasses() {
         try {
             let response = await this._axios.get(endpoints.classList, {

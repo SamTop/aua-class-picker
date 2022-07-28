@@ -4,5 +4,6 @@ module.exports = {
     classList: 'https://im.aua.am/Student/ClassRegistration',
     classListTMP: 'https://im.aua.am/Student/UserClass', // temporary endpoint for testing purposes as classes closed right now
     register: 'https://im.aua.am/Student/StudentClassRegister/',
-    drop: 'https://im.aua.am/Student/DropClass'
+    drop: 'https://im.aua.am/Student/DropClass',
+    classDetails:'https://im.aua.am/Student/LoadClassDetails/'
 };
